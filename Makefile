@@ -76,7 +76,7 @@ MODULES       = build cint/cint core/metautils core/pcre core/clib core/utils \
                 graf2d/mathtext graf2d/graf graf2d/gpad graf3d/g3d \
                 gui/gui math/minuit hist/histpainter tree/treeplayer \
                 gui/ged tree/treeviewer math/physics graf2d/postscript \
-                core/rint html montecarlo/eg \
+                core/rint html montecarlo/eg net/davix \
                 geom/geom geom/geompainter montecarlo/vmc \
                 math/fumili math/mlp math/quadp net/auth gui/guibuilder io/xml \
                 math/foam math/splot math/smatrix io/sql \
@@ -154,6 +154,9 @@ MODULES      += io/castor
 endif
 ifeq ($(BUILDDCAP),yes)
 MODULES      += io/dcache
+endif
+ifeq ($(BUILDDAVIX),yes)
+MODULES      += net/davix
 endif
 ifeq ($(BUILDGFAL),yes)
 MODULES      += io/gfal
@@ -561,7 +564,7 @@ ALLHDRS      :=
 ALLLIBS      := $(CORELIB)
 ALLMAPS      := $(COREMAP)
 ALLEXECS     :=
-INCLUDEFILES :=
+INCLUDEFILES := -I/usr/include/davix
 
 ##### RULES #####
 
@@ -1411,6 +1414,7 @@ showbuild:
 	@echo "OSTHREADLIB        = $(OSTHREADLIB)"
 	@echo "SHIFTLIB           = $(SHIFTLIB)"
 	@echo "DCAPLIB            = $(DCAPLIB)"
+	@echo "DAVIXLIB           = $(DAVIXLIB)"
 	@echo "GFALLIB            = $(GFALLIB)"
 	@echo "MYSQLINCDIR        = $(MYSQLINCDIR)"
 	@echo "ORACLEINCDIR       = $(ORACLEINCDIR)"
