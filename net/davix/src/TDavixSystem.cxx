@@ -64,6 +64,10 @@ TDavixSystem::TDavixSystem(const char *url) : TSystem(url) {
   SetTitle("WebDAV system administration");
 }
 
+TDavixSystem::TDavixSystem() : TSystem() {
+
+}
+
 TDavixSystem::~TDavixSystem() {
   SafeDelete(d_ptr);
 }

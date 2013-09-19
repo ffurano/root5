@@ -37,7 +37,7 @@ private:
   
 public:
 
-  
+  TDavixSystem();
   TDavixSystem(const char *url);
 
   virtual ~TDavixSystem();
@@ -52,7 +52,7 @@ public:
   virtual void *OpenDirectory(const char* dir);
   virtual int Unlink(const char *path);
 
-  ClassDef(TDavixSystem, 1);
+  ClassDef(TDavixSystem, 0);
 };
 
 #endif	/* TDAVIXSYSTEM_H */

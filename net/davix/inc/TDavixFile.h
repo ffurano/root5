@@ -86,7 +86,7 @@ public:
     /// and grid related extension for a grid analysis usage
     void enableGridMode();
 
-    ClassDef(TDavixFile, 1)
+    ClassDef(TDavixFile, 0)
 };
 
 

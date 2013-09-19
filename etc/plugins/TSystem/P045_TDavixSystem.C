@@ -1,20 +1,24 @@
 void P045_TDavixSystem()
 {
-   gPluginMgr->AddHandler("TSystem", "^http:", "TDavixSystem",
-      "DAVIX", "TDavixSystem()");
 
-   gPluginMgr->AddHandler("TSystem", "^dav:", "TDavixSystem",
-      "DAVIX", "TDavixSystem()");
+   TString configfeatures = gROOT->GetConfigFeatures();
 
-   gPluginMgr->AddHandler("TSystem", "^davs:", "TDavixSystem",
-      "DAVIX", "TDavixSystem()");
+   // only if ROOT was compiled with davix enabled we configure a handler
+   if ( configfeatures.Contains("davix") ) {
 
-   gPluginMgr->AddHandler("TSystem", "^https:", "TDavixSystem",
-      "DAVIX", "TDavixSystem()");
+      gPluginMgr->AddHandler("TSystem", "^http[s]?:", "TDavixSystem",
+         "DAVIX", "TDavixSystem()");
 
-   gPluginMgr->AddHandler("TSystem", "^s3:", "TDavixSystem",
-      "DAVIX", "TDavixSystem()");
+      gPluginMgr->AddHandler("TSystem", "^dav[s]?:", "TDavixSystem",
+         "DAVIX", "TDavixSystem()");
 
-   gPluginMgr->AddHandler("TSystem", "^s3s:", "TDavixSystem",
-      "DAVIX", "TDavixSystem()");
+      gPluginMgr->AddHandler("TSystem", "^s3[s]?:", "TDavixSystem",
+         "DAVIX", "TDavixSystem()");
+
+
+   } else {
+      Error("P045_TDavixSystem","Please fix your ROOT config to be able to load libdavix.so");
+   }
+
+
 }
