@@ -1,13 +1,7 @@
-/*************************************************************************
- * Copyright (C) 1995-2000, Rene Brun and Fons Rademakers.               *
- * All rights reserved.                                                  *
- *                                                                       *
- * For the licensing terms see $ROOTSYS/LICENSE.                         *
- * For the list of contributors see $ROOTSYS/README/CREDITS.             *
- *************************************************************************/
-
 #ifndef ROOT_TDavixFile
 #define ROOT_TDavixFile
+
+
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -24,27 +18,25 @@
 // Authors:     Adrien Devresse (CERN IT/SDC)                           //
 //              Tigran Mkrtchyan (DESY)                                 //
 //                                                                      //
-// Checks and ROOT5 porting:                                            //
+// Checks, refactoring and ROOT5 porting:                                            //
 //              Fabrizio Furano (CERN IT/SDC)                           //
 //                                                                      //
 // September 2013                                                       //
 //                                                                      //
 //////////////////////////////////////////////////////////////////////////
 
-#ifndef ROOT_TFile
+
 #include "TFile.h"
-#endif
-
-#ifndef ROOT_TUrl
 #include "TUrl.h"
-#endif
-
-#ifndef ROOT_TSystem
 #include "TSystem.h"
-#endif
+#include "TMutex.h"
 
-struct TDavixFileInternal;
+class TDavixFileInternal;
 struct Davix_fd;
+
+
+
+
 
 class TDavixFile : public TFile {
 private:
@@ -75,6 +67,7 @@ public:
     ////
     TDavixFile(TUrl url, Option_t *opt = "");
     TDavixFile(const char* url, Option_t *opt = "");
+    
     ~TDavixFile();
 
     // TFile interface.
@@ -96,13 +89,6 @@ public:
     ClassDef(TDavixFile, 1)
 };
 
-class TDavixSystem : public TSystem {
 
-public:
-    TDavixSystem();
-    virtual ~TDavixSystem() {}
-
-    ClassDef(TDavixSystem,0)
-};
 
 #endif
