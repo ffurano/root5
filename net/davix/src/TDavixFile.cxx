@@ -68,6 +68,18 @@ const char* ca_check_opt = "ca_check=no";
 const char* s3_seckey_opt = "s3seckey=";
 const char* s3_acckey_opt = "s3acckey=";
 
+
+bool isno(const char *str) {
+  if (!str) return false;
+  
+  if (!strcmp(str, "n") || !strcmp(str, "no") || !strcmp(str, "0") || !strcmp(str, "false")) return true;
+    
+  return false;
+  
+}
+
+
+
 //____________________________________________________________________________
 
 static void ConfigureDavixLogLevel() {
@@ -149,8 +161,11 @@ inline void TDavixFile_http_get_ucert(std::string& ucert, std::string& ukey) {
     if (gDebug > 0)
       Info("TDavixFile_http_get_ucert", "Found cert and key in gEnv");
 
-    return;
+    
+  
   }
+  return;
+  
 }
 
 static int TDavixFile_http_authn_cert_X509(void* userdata, const Davix::SessionInfo & info,
@@ -216,6 +231,21 @@ void TDavixFileInternal::enableGridMode() {
 
   davixParam->setTransparentRedirectionSupport(true);
   davixParam->setClientCertCallbackX509(&TDavixFile_http_authn_cert_X509, NULL);
+  
+  
+  env_var = gEnv->GetValue("Davix.GSI.CACheck", (const char*)"y");
+  if (!isno(env_var)) {
+   if (gDebug > 0)
+     Info("enableGridMode", "Setting CAcheck to yes");
+   davixParam->setSSLCAcheck(true);
+  }
+  else {
+   if (gDebug > 0)
+     Info("enableGridMode", "Setting CAcheck to no");
+   davixParam->setSSLCAcheck(false);
+  }
+  
+  
 }
 
 void TDavixFileInternal::setS3Auth(const std::string & key, const std::string & token) {

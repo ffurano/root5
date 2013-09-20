@@ -25,6 +25,20 @@
 //                                                                      //
 //////////////////////////////////////////////////////////////////////////
 
+//
+// Parameters that influence the behavior of TDavixFile/TDavixSystem. The names should be self-explanatory
+//
+//Davix.Debug
+//Davix.GSI.UserProxy
+//Davix.GSI.UserCert
+//Davix.GSI.UserKey
+
+//Davix.GSI.CAdir
+//Davix.GSI.CACheck
+//Davix.GSI.GridMode
+//
+// Environment variables:
+// X509_USER_CERT, X509_USER_KEY, X509_USER_PROXY ... usual meaning for the X509 Grid things. gEnv vars have higher priority.
 
 #include "TFile.h"
 #include "TUrl.h"
