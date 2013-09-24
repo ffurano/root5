@@ -155,6 +155,10 @@ endif
 ifeq ($(BUILDDCAP),yes)
 MODULES      += io/dcache
 endif
+ifeq ($(BUILDDAVIX),yes)
+MODULES      += net/davix
+INCLUDEFILES += -I/usr/include/davix
+endif
 ifeq ($(BUILDGFAL),yes)
 MODULES      += io/gfal
 endif
@@ -561,7 +565,7 @@ ALLHDRS      :=
 ALLLIBS      := $(CORELIB)
 ALLMAPS      := $(COREMAP)
 ALLEXECS     :=
-INCLUDEFILES :=
+INCLUDEFILES := 
 
 ##### RULES #####
 
@@ -1411,6 +1415,7 @@ showbuild:
 	@echo "OSTHREADLIB        = $(OSTHREADLIB)"
 	@echo "SHIFTLIB           = $(SHIFTLIB)"
 	@echo "DCAPLIB            = $(DCAPLIB)"
+	@echo "DAVIXLIB            = $(DAVIXLIB)"
 	@echo "GFALLIB            = $(GFALLIB)"
 	@echo "MYSQLINCDIR        = $(MYSQLINCDIR)"
 	@echo "ORACLEINCDIR       = $(ORACLEINCDIR)"
@@ -1470,3 +1475,4 @@ help:
 		{ print substr($$1, 1, length($$1)-1) }' |    \
 	sort | uniq |                                         \
 	pr -t -w 80 -4
+# DO NOT DELETE

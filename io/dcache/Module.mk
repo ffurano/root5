@@ -41,6 +41,7 @@ include/%.h:    $(DCACHEDIRI)/%.h
 		cp $< $@
 
 $(DCACHELIB):   $(DCACHEO) $(DCACHEDO) $(ORDER_) $(MAINLIBS) $(DCACHELIBDEP)
+		echo $(DAVIXLIB)
 		@$(MAKELIB) $(PLATFORM) $(LD) "$(LDFLAGS)" \
 		   "$(SOFLAGS)" libDCache.$(SOEXT) $@ "$(DCACHEO) $(DCACHEDO)" \
 		   "$(DCACHELIBEXTRA) $(DCAPLIBDIR) $(DCAPLIB)"
