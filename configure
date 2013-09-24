@@ -226,6 +226,7 @@ MINUIT2          \
 TABLE            \
 XMLDIR           \
 ROOTDICTTYPE     \
+DAVIX            \
 "
 configenvvars=
 for c in $envvars ; do
@@ -1613,6 +1614,7 @@ with options, prefix with --with-, enables corresponding support
   globus-libdir      Globus support, location of globus libraries
   hdfs-incdir        HDFS support, location of hdfs.h
   hdfs-libdir        HDFS support, location of libhdfs
+  iosvers            iOS SDK version (6.1, 7.0), default will be latest SDK
   jni-incdir         HDFS support, location of JNI headers
   jvm-libdir         HDFS support, location of JVM library
   krb5               Kerberos5 support, location of Kerberos distribution
@@ -1621,6 +1623,7 @@ with options, prefix with --with-, enables corresponding support
   ldap-incdir        LDAP support, location of ldap.h
   ldap-libdir        LDAP support, location of libldap
   llvm-config        LLVM/clang for cling, location of llvm-config script
+  macosxvers         OS X SDK version (10.8, 10.9), default will be latest SDK
   monalisa-incdir    Monalisa support, location of ApMon.h
   monalisa-libdir    Monalisa support, location of libapmoncpp
   mysql-incdir       MySQL support, location of mysql.h
@@ -1777,15 +1780,29 @@ solaris64CC5)
    checklib64="yes" ;;
 macosx*)
    logmsg "Will check for compatible libraries"
-   checklibcompat="yes" ;;
+   checklibcompat="yes"
+   if test "x$macosxvers" = "x"; then
+      # get most recent SDK version
+      macosxminor=`sw_vers | sed -n 's/ProductVersion://p' | cut -d . -f 2`
+      macosxvers=10.$macosxminor
+      # make available to conftest.mk scripts
+      export MACOSXVERS=$macosxvers
+   fi
+   ;;
 ios*)
    logmsg "Will check iOS SDK libraries"
    message "Checking for iOS SDK"
-   iossdk=`make -s -f ${ac_srcdir}/config/Makefile.$arch CONFIGURE=yes showsdk`
+   if test "x$iosvers" = "x"; then
+      # get most recent SDK version
+      iosvers=`xcodebuild -showsdks | sed -n '/iphoneos/s/.*iOS //p' | sed 's/ .*//'|awk 'END{print}'`
+   fi
+   xcodepath=`/usr/bin/xcode-select -print-path`
+   iossdk=$xcodepath/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS$iosvers.sdk
    result "$iossdk"
    if [ ! -d $iossdk ]; then
        result "`basename $0`: no iOS SDK found at $iossdk"
        result "Run "xcode-select" to update the developer directory path"
+       result "or make sure the desired SDK version is installed"
        exit 1
    fi
    enable_cintex="no"
@@ -1959,6 +1976,7 @@ if test $# -gt 0 ; then
       --with-gccxml=*)         gccxml=$optarg        ;;
       --with-hdfs-incdir=*)    hdfsincdir=$optarg    ; enable_hdfs="yes"    ;;
       --with-hdfs-libdir=*)    hdfslibdir=$optarg    ; enable_hdfs="yes"    ;;
+      --with-iosvers=*)        iosvers=$optarg       ;;
       --with-jni-incdir=*)     jniincdir=$optarg     ;;
       --with-jvm-libdir=*)     jvmlibdir=$optarg     ;;
       --with-krb5=*)           krb5dir=$optarg       ; enable_krb5="yes"    ;;
@@ -1967,6 +1985,7 @@ if test $# -gt 0 ; then
       --with-ldap-incdir=*)    ldapincdir=$optarg    ; enable_ldap="yes"    ;;
       --with-ldap-libdir=*)    ldaplibdir=$optarg    ; enable_ldap="yes"    ;;
       --with-llvm-config=*)    llvmconfig=$optarg    ;; # require explicit --enable-cling
+      --with-macosxvers=*)     macosxvers=$optarg    ;;
       --with-mysql-incdir=*)   mysqlincdir=$optarg   ; enable_mysql="yes"   ;;
       --with-mysql-libdir=*)   mysqllibdir=$optarg   ; enable_mysql="yes"   ;;
       --with-monalisa-incdir=*)monalisaincdir=$optarg; enable_monalisa="yes";;
@@ -2367,11 +2386,13 @@ if test "x$enable_cocoa" = "xyes"; then
     enable_x11="no"
     result "yes"
     message "Checking for OSX SDK"
-    osxsdk=`make -s -f ${ac_srcdir}/config/Makefile.$arch CONFIGURE=yes showsdk`
+    xcodepath=`/usr/bin/xcode-select -print-path`
+    osxsdk=$xcodepath/Platforms/MacOSX.platform/Developer/SDKs/MacOSX$macosxvers.sdk
     result "$osxsdk"
     if [ ! -d $osxsdk ]; then
         result "`basename $0`: no OSX SDK found at $osxsdk"
         result "Run "xcode-select" to update the developer directory path"
+        result "or make sure the desired SDK version is installed"
         exit 1
     else
         openglincdir=${osxsdk}/System/Library/Frameworks/OpenGL.framework/Headers
@@ -3949,6 +3970,40 @@ check_explicit "$enable_davix" "$enable_davix_explicit" \
 
 
 
+
+######################################################################
+#
+### echo %%% DavIx Support - Third party libraries
+#
+if test ! "x$enable_davix" = "xno" ; then
+    check_header "davix.hpp" "$davixincdir" \
+        $DAVIX ${DAVIX:+$DAVIX/include} \
+        /usr/local/include/davix \
+        /usr/iclude/davix \
+        /usr/include/davix
+    davixincdir=$found_dir
+
+    check_library "libdavix" "$enable_shared" "$davixlibdir" \
+        /usr/lib /usr/lib64 /usr/local/lib64
+    davixlib=$found_lib
+    davixlibdir=$found_dir
+
+    if test ! "x$davixlib" = "x" ; then
+        check_symbol davix_logger "$davixlib" "$davixlibdir"
+        if test  $found_symbol -eq 0 ; then
+            result "### Need davix_posix_stat in libdavix"
+            davixlib=
+            davixlibdir=
+            davixincdir=
+        fi
+    fi
+
+    if test "x$davixincdir" = "x" || test "x$davixlib" = "x"; then
+        enable_davix="no"
+    fi
+fi
+check_explicit "$enable_davix" "$enable_davix_explicit" \
+     "Explicitly required DavIx dependencies not fulfilled"
 
 ######################################################################
 #
@@ -6275,7 +6330,7 @@ if test "x$show_pkglist" = "xyes" ; then
     test "x$enable_castor"   = "xyes" && pl="$pl root-plugin-io-castor"
     test "x$enable_chirp"    = "xyes" && pl="$pl root-plugin-io-chirp"
     test "x$enable_dcache"   = "xyes" && pl="$pl root-plugin-io-dcache"
-    test "x$enable_davix"    = "xyes" && pl="$pl root-plugin-io-davix"
+    test "x$enable_davix"   = "xyes" && pl="$pl root-plugin-io-davix"
     test "x$enable_gfal"     = "xyes" && pl="$pl root-plugin-io-gfal"
     test "x$enable_hdfs"     = "xyes" && pl="$pl root-plugin-io-hdfs"
     test "x$enable_rfio"     = "xyes" && pl="$pl root-plugin-io-rfio"
@@ -6690,14 +6745,15 @@ sed -e "s|@aclocaldir@|$aclocaldir|"            \
     -e "s|@cintincdir@|$cintincdir|"            \
     -e "s|@cppunit@|$cppunit|"                  \
     -e "s|@datadir@|$datadir|"                  \
-    -e "s|@davixincdir@|$davixincdir|"          \
-    -e "s|@davixlib@|$davixlib|"                \
-    -e "s|@davixlibdir@|$davixlibdir|"            \
+    -e "s|@davixincdir@|$davixincdir|"            \
     -e "s|@dcapincdir@|$dcapincdir|"            \
+    -e "s|@davixincdir@|$davixincdir|"            \
     -e "s|@comerrlib@|$comerrlib|"              \
     -e "s|@comerrlibdir@|$comerrlibdir|"        \
     -e "s|@cryptolib@|$cryptolib|"              \
     -e "s|@cryptolibdir@|$cryptolibdir|"        \
+    -e "s|@davixlib@|$davixlib|"                  \
+    -e "s|@davixlibdir@|$davixlibdir|"            \
     -e "s|@dcaplib@|$dcaplib|"                  \
     -e "s|@dcaplibdir@|$dcaplibdir|"            \
     -e "s|@dicttype@|$dicttype|"                \
@@ -6758,6 +6814,8 @@ sed -e "s|@globusincdir@|$globusincdir|"        \
     -e "s|@hdfsincdir@|$hdfsincdir|"            \
     -e "s|@hdfslib@|$hdfslib|"                  \
     -e "s|@hdfslibdir@|$hdfslibdir|"            \
+    -e "s|@iossdk@|$iossdk|"                    \
+    -e "s|@iosvers@|$iosvers|"                  \
     -e "s|@iconpath@|$iconpath|"                \
     -e "s|@incdir@|$incdir|"                    \
     -e "s|@jniincdir@|$jniincdir|g"             \
@@ -6774,6 +6832,7 @@ sed -e "s|@globusincdir@|$globusincdir|"        \
     -e "s|@ldflags@||"                          \
     -e "s|@libdir@|$libdir|"                    \
     -e "s|@llvmconfig@|$llvmconfig|"            \
+    -e "s|@macosxvers@|$macosxvers|"            \
     -e "s|@macrodir@|$macrodir|"                \
     -e "s|@mandir@|$mandir|"                    \
     -e "s|@mkliboption@|$mkliboption|"          \
@@ -6804,6 +6863,7 @@ sed -e "s|@globusincdir@|$globusincdir|"        \
     -e "s|@oracleincdir@|$oracleincdir|"        \
     -e "s|@oraclelib@|$oraclelib|"              \
     -e "s|@oraclelibdir@|$oraclelibdir|"        \
+    -e "s|@osxsdk@|$osxsdk|"                    \
     -e "s|@pgsqlincdir@|$pgsqlincdir|"          \
     -e "s|@pgsqllib@|$pgsqllib|"                \
     -e "s|@pgsqllibdir@|$pgsqllibdir|"          \

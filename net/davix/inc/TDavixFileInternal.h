@@ -40,14 +40,15 @@ class TDavixFileInternal {
   friend class TDavixSystem;
 
   TDavixFileInternal(TUrl & mUrl, Option_t* mopt) :
-  positionLock(NULL),
-  openLock(NULL),
+  positionLock(),
+  openLock(),
   davixContext(NULL),
   davixParam(NULL),
   davixPosix(NULL),
   davixFd(NULL),
   fUrl(mUrl),
-  opt(mopt) {
+  opt(mopt),
+  oflags(0){
 
   }
 
@@ -77,7 +78,7 @@ class TDavixFileInternal {
   void init();
 
 
-  TMutex *positionLock;
+  TMutex positionLock;
   TMutex openLock;
 
   // DAVIX
@@ -87,6 +88,7 @@ class TDavixFileInternal {
   Davix_fd *davixFd;
   TUrl &fUrl;
   Option_t* opt;
+  int oflags;
 
 public:
   

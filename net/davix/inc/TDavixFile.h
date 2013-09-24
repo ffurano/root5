@@ -60,6 +60,7 @@ private:
     Long64_t DavixReadBuffer(Davix_fd *fd, char *buf, Int_t len);
     Long64_t DavixPReadBuffer(Davix_fd *fd, char *buf, Long64_t pos, Int_t len);
     Long64_t DavixReadBuffers(Davix_fd *fd, char *buf, Long64_t *pos, Int_t *len, Int_t nbuf);
+	Long64_t DavixWriteBuffer(Davix_fd *fd, const char *buf, Int_t len);      
     Int_t DavixStat(struct stat *st) const;
 
     // perfStats
@@ -90,6 +91,8 @@ public:
     virtual Bool_t ReadBuffer(char *buf, Int_t len);
     virtual Bool_t ReadBuffer(char *buf, Long64_t pos, Int_t len);
     virtual Bool_t ReadBuffers(char *buf, Long64_t *pos, Int_t *len, Int_t nbuf);
+    virtual Bool_t WriteBuffer(const char *buffer, Int_t bufferLength);
+  
 
     // TDavixFile options
     /// Enable or disable certificate authority check

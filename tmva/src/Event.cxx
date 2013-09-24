@@ -36,6 +36,9 @@
 #include <cassert>
 #include "TCut.h"
 
+Bool_t TMVA::Event::fgIsTraining = kFALSE;
+Bool_t TMVA::Event::fgIgnoreNegWeightsInTraining = kFALSE;
+
 //____________________________________________________________
 TMVA::Event::Event()
    : fValues(),
@@ -143,15 +146,15 @@ TMVA::Event::Event( const Event& event )
       UInt_t idx=0;
       std::vector<Float_t*>::iterator itDyn=event.fValuesDynamic->begin(), itDynEnd=event.fValuesDynamic->end();
       for (; itDyn!=itDynEnd && idx<nvar; ++itDyn){
-	 Float_t value=*(*itDyn);
-	 fValues.push_back( value );
-	 ++idx;
+         Float_t value=*(*itDyn);
+         fValues.push_back( value );
+         ++idx;
       }
       fSpectators.clear();
       for (; itDyn!=itDynEnd; ++itDyn){
-	 Float_t value=*(*itDyn);
-	 fSpectators.push_back( value );
-	 ++idx;
+         Float_t value=*(*itDyn);
+         fSpectators.push_back( value );
+         ++idx;
       }
 
       fDynamic=kFALSE;
@@ -178,15 +181,15 @@ void TMVA::Event::CopyVarValues( const Event& other )
       UInt_t idx=0;
       std::vector<Float_t*>::iterator itDyn=other.fValuesDynamic->begin(), itDynEnd=other.fValuesDynamic->end();
       for (; itDyn!=itDynEnd && idx<nvar; ++itDyn){
-	 Float_t value=*(*itDyn);
-	 fValues.push_back( value );
-	 ++idx;
+         Float_t value=*(*itDyn);
+         fValues.push_back( value );
+         ++idx;
       }
       fSpectators.clear();
       for (; itDyn!=itDynEnd; ++itDyn){
-	 Float_t value=*(*itDyn);
-	 fSpectators.push_back( value );
-	 ++idx;
+         Float_t value=*(*itDyn);
+         fSpectators.push_back( value );
+         ++idx;
       }
    }
    fDynamic     = kFALSE;
@@ -202,8 +205,9 @@ Float_t TMVA::Event::GetValue( UInt_t ivar ) const
 {
    // return value of i'th variable
    Float_t retval;
-
+   //   std::cout<< fDynamic ; 
    if (fDynamic){
+     //     std::cout<< " " << (*fValuesDynamic).size() << " " << fValues.size() << std::endl;
       retval = *((*fValuesDynamic).at(ivar));
    }
    else{
@@ -294,8 +298,39 @@ void TMVA::Event::SetSpectator( UInt_t ivar, Float_t value )
    fSpectators.at(ivar) = value;
 }
 
+//_____________________________________________________________
+Double_t TMVA::Event::GetWeight() const 
+{
+  // return the event weight - depending on whether the flag 
+  // *IgnoreNegWeightsInTraining* is or not. If it is set AND it is 
+  // used for training, then negetive event weights are set to zero !
+  // NOTE! For events used in Testing, the ORIGINAL possibly negative
+  // event weight is used  no matter what 
+
+  return (fgIgnoreNegWeightsInTraining && fgIsTraining && fWeight < 0) ? 0. : fWeight*fBoostWeight;
+}
+
+//_____________________________________________________________
+void TMVA::Event::SetIsTraining(Bool_t b)
+{
+  // when this static function is called, it sets the flag whether 
+  // events with negative event weight should be ignored in the 
+  // training, or not.
+
+  fgIsTraining=b;
+}
+//_____________________________________________________________
+void TMVA::Event::SetIgnoreNegWeightsInTraining(Bool_t b)
+{
+  // when this static function is called, it sets the flag whether 
+  // events with negative event weight should be ignored in the 
+  // training, or not.
+
+  fgIgnoreNegWeightsInTraining=b;
+}
+
 //_______________________________________________________________________
-ostream& TMVA::operator << ( ostream& os, const TMVA::Event& event )
+std::ostream& TMVA::operator << ( std::ostream& os, const TMVA::Event& event )
 { 
    // Outputs the data of an event
    os << "Variables [" << event.fValues.size() << "]:";

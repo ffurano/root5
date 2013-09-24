@@ -67,6 +67,10 @@ const char* grid_mode_opt = "grid_mode=yes";
 const char* ca_check_opt = "ca_check=no";
 const char* s3_seckey_opt = "s3seckey=";
 const char* s3_acckey_opt = "s3acckey=";
+const char* open_mode_read = "READ";
+const char* open_mode_create = "CREATE";
+const char* open_mode_new = "NEW";
+const char* open_mode_update = "UPDATE";
 
 
 bool isno(const char *str) {
@@ -78,6 +82,18 @@ bool isno(const char *str) {
   
 }
 
+int configure_open_flag(const std::string & str, int old_flag){
+	if( strcasecmp(str.c_str(), open_mode_read) == 0)
+		old_flag |= O_RDONLY;
+	if( (strcasecmp(str.c_str(), open_mode_create) == 0)
+	    || (strcasecmp(str.c_str(), open_mode_new) == 0)){
+		old_flag |= (O_CREAT|O_WRONLY|O_TRUNC);
+	}
+	if( (strcasecmp(str.c_str(), open_mode_update) == 0)){
+		old_flag |= (O_RDWR);
+	}
+	return old_flag;		
+}
 
 
 //____________________________________________________________________________
@@ -107,7 +123,7 @@ static void ConfigureDavixLogLevel() {
 ///////////////////////////////////////////////////////////////////
 // Authn implementation, Locate and get VOMS cred if exist
 
-inline void TDavixFile_http_get_ucert(std::string& ucert, std::string& ukey) {
+static void TDavixFile_http_get_ucert(std::string& ucert, std::string& ukey) {
   char default_proxy[64];
   const char *genvvar = 0, *genvvar1 = 0;
   // The gEnv has higher priority, let's look for a proxy cert
@@ -190,12 +206,11 @@ TDavixFileInternal::~TDavixFileInternal() {
   delete davixPosix;
   delete davixContext;
   delete davixParam;
-  delete positionLock;
 }
 
 Davix_fd * TDavixFileInternal::Open() {
   DavixError *davixErr = NULL;
-  Davix_fd *fd = davixPosix->open(davixParam, fUrl.GetUrl(), O_RDONLY, &davixErr);
+  Davix_fd *fd = davixPosix->open(davixParam, fUrl.GetUrl(), oflags, &davixErr);
   if (fd == NULL) {
     Error("DavixOpen", "failed to open file with davix: %s (%d)",
             davixErr->getErrMsg().c_str(), davixErr->getStatus());
@@ -274,24 +289,32 @@ void TDavixFileInternal::parseParams(Option_t* option) {
   }
 
   for (std::vector<std::string>::iterator it = parsed_options.begin(); it < parsed_options.end(); ++it) {
+	// grid mode option  
     if ((strcasecmp(it->c_str(), grid_mode_opt)) == 0) {
       enableGridMode();
     }
+    // ca check option
     if ((strcasecmp(it->c_str(), ca_check_opt)) == 0) {
       davixParam->setSSLCAcheck(false);
     }
+    // s3 sec key
     if (strncasecmp(it->c_str(), s3_seckey_opt, strlen(s3_seckey_opt)) == 0) {
       s3seckey = std::string(it->c_str() + strlen(s3_seckey_opt));
     }
-
+    // s3 access key
     if (strncasecmp(it->c_str(), s3_acckey_opt, strlen(s3_acckey_opt)) == 0) {
       s3acckey = std::string(it->c_str() + strlen(s3_acckey_opt));
     }
+    // open mods
+	oflags= configure_open_flag(*it, oflags);    
   }
 
   if (s3seckey.size() > 0) {
     setS3Auth(s3seckey, s3acckey);
   }
+  
+  if(oflags == 0) // default open mode
+	oflags = O_RDONLY;
 }
 
 void TDavixFileInternal::init() {
@@ -299,7 +322,6 @@ void TDavixFileInternal::init() {
   davixPosix = new DavPosix(davixContext);
   davixParam = new RequestParams();
   davixParam->setUserAgent(gUserAgent);
-  positionLock = new TMutex();
   ConfigureDavixLogLevel();
   parseParams(opt);
 }
@@ -316,7 +338,6 @@ Int_t TDavixFileInternal::DavixStat(const char *url, struct stat *st) {
     Error("DavixStat", "failed to stat the file with davix: %s (%d)",
             davixErr->getErrMsg().c_str(), davixErr->getStatus());
     DavixError::clearError(&davixErr);
-    
     return 0;
   }
   return 1;
@@ -351,6 +372,7 @@ TDavixFile::~TDavixFile() {
 //______________________________________________________________________________
 
 void TDavixFile::Init(Bool_t init) {
+  (void) init;
   d_ptr->init();
   TFile::Init(kFALSE);
   fOffset = 0;
@@ -363,7 +385,7 @@ void TDavixFile::Init(Bool_t init) {
 void TDavixFile::Seek(Long64_t offset, ERelativeTo pos) {
   // Set position from where to start reading.
 
-  TLockGuard guard(d_ptr->positionLock);
+  TLockGuard guard(&(d_ptr->positionLock));
   switch (pos) {
     case kBeg:
       fOffset = offset + fArchiveOffset;
@@ -389,7 +411,7 @@ void TDavixFile::Seek(Long64_t offset, ERelativeTo pos) {
 Bool_t TDavixFile::ReadBuffer(char *buf, Int_t len) {
   // Read specified byte range from remote file via HTTP.
   // Returns kTRUE in case of error.
-  TLockGuard guard(d_ptr->positionLock);
+  TLockGuard guard(&(d_ptr->positionLock));
   Davix_fd *fd;
   if ((fd = d_ptr->getDavixFileInstance()) == NULL)
     return kTRUE;
@@ -441,6 +463,24 @@ Bool_t TDavixFile::ReadBuffers(char *buf, Long64_t *pos, Int_t *len, Int_t nbuf)
   return kFALSE;
 }
 
+//_____________________________________________________________________________
+Bool_t TDavixFile::WriteBuffer(const char *buf, Int_t len)
+{
+
+  Davix_fd *fd;
+  if ((fd = d_ptr->getDavixFileInstance()) == NULL)
+    return kTRUE;
+
+  Long64_t ret = DavixWriteBuffer(fd, buf, len);
+  if (ret < 0)
+    return kTRUE;
+
+  if (gDebug > 1)
+    Info("WriteBuffer", "%lld bytes of data write"
+          " %d requested", ret, len);
+  return kFALSE;
+}
+
 void TDavixFile::setCACheck(Bool_t check) {
   d_ptr->davixParam->setSSLCAcheck((bool)check);
 }
@@ -489,6 +529,23 @@ Long64_t TDavixFile::DavixReadBuffer(Davix_fd *fd, char *buf, Int_t len) {
   Long64_t ret = d_ptr->davixPosix->pread(fd, buf, len, fOffset, &davixErr);
   if (ret < 0) {
     Error("DavixReadBuffer", "failed to read data with davix: %s (%d)",
+            davixErr->getErrMsg().c_str(), davixErr->getStatus());
+    DavixError::clearError(&davixErr);
+  } else {
+    fOffset += ret;
+    eventStop(start_time, ret);
+  }
+
+  return ret;
+}
+
+Long64_t TDavixFile::DavixWriteBuffer(Davix_fd *fd, const char *buf, Int_t len) {
+  DavixError *davixErr = NULL;
+  Double_t start_time = eventStart();
+
+  Long64_t ret = d_ptr->davixPosix->pwrite(fd, buf, len, fOffset, &davixErr);
+  if (ret < 0) {
+    Error("DavixWriteBuffer", "failed to write data with davix: %s (%d)",
             davixErr->getErrMsg().c_str(), davixErr->getStatus());
     DavixError::clearError(&davixErr);
   } else {

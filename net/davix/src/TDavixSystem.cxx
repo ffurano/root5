@@ -65,7 +65,7 @@ TDavixSystem::TDavixSystem(const char *url) : TSystem(url) {
 }
 
 TDavixSystem::TDavixSystem() : TSystem() {
-
+	delete d_ptr;
 }
 
 TDavixSystem::~TDavixSystem() {
@@ -73,26 +73,36 @@ TDavixSystem::~TDavixSystem() {
 }
 
 void TDavixSystem::FreeDirectory(void *dirp) {
-
+	d_ptr->davixPosix->closedir( static_cast<DAVIX_DIR*>(dirp), NULL);		
 }
 
 const char *TDavixSystem::GetDirEntry(void *dirp) {
-
-  return NULL;
+	struct dirent * dir;
+	DavixError* davixErr=NULL;
+	if( ((dir = d_ptr->davixPosix->readdir(static_cast<DAVIX_DIR*>(dirp), &davixErr) ) == NULL)
+	    && ( davixErr != NULL ) ){
+		Error("DavixReaddir", "failed to readdir the directory: %s (%d)",
+            davixErr->getErrMsg().c_str(), davixErr->getStatus());
+		DavixError::clearError(&davixErr);		
+	}
+	return (dir)?(dir->d_name):NULL;
 }
 
 void *TDavixSystem::OpenDirectory(const char* dir) {
-
-  return NULL;
+	DavixError* davixErr=NULL;
+	DAVIX_DIR* d;
+	if( (d = d_ptr->davixPosix->opendir(d_ptr->davixParam, dir, &davixErr) ) == NULL){
+		Error("DavixOpendir", "failed to opendir the directory: %s (%d)",
+            davixErr->getErrMsg().c_str(), davixErr->getStatus());
+		DavixError::clearError(&davixErr);		
+	}
+	return d;
 }
 
 Int_t TDavixSystem::GetPathInfo(const char* path, FileStat_t &buf) {
-  DavixError *davixErr = NULL;
   struct stat st;
 
   if (!d_ptr->DavixStat(path, &st)) return 1;
-
-
   buf.fDev = 0;
   buf.fIno = 0;
   buf.fMode = st.st_mode; // protection (combination of EFileModeMask bits)
@@ -109,18 +119,53 @@ Int_t TDavixSystem::GetPathInfo(const char* path, FileStat_t &buf) {
 }
 
 Bool_t TDavixSystem::IsPathLocal(const char *path) {
+   (void) path;
   return kFALSE;
 }
 
 Int_t TDavixSystem::Locate(const char* path, TString &endurl) {
- return 0;
+	DavixError* davixErr=NULL;
+	ssize_t ret;	
+	ReplicaVec vecRep;
+	DavFile f(*d_ptr->davixContext, Uri(path));
+	if( (ret = f.getAllReplicas(d_ptr->davixParam,
+                                vecRep,
+                               &davixErr)) < 0){
+		Error("DavixLocate", "failed to Locate file: %s (%d)",
+            davixErr->getErrMsg().c_str(), davixErr->getStatus());
+		DavixError::clearError(&davixErr);	
+		return 1;							   					
+	}
+	if(vecRep.size() > 0){
+		endurl = vecRep[0].getString().c_str();
+	}else{
+		endurl = path;
+	}
+	if (gDebug > 0)	
+		Info("DavixLocate", "Davix Locate %s to %s", path, endurl.Data());
+	
+	return 0;
 }
 
 Int_t TDavixSystem::MakeDirectory(const char* dir) {
- return 0;
+	DavixError* davixErr=NULL;
+	int ret;
+	if( (ret = d_ptr->davixPosix->mkdir(d_ptr->davixParam, dir, 0755, &davixErr) )  < 0){
+		Error("DavixMkdir", "failed to create the directory: %s (%d)",
+            davixErr->getErrMsg().c_str(), davixErr->getStatus());
+		DavixError::clearError(&davixErr);		
+	}
+	return ret;
 }
 
 int TDavixSystem::Unlink(const char *path) {
- return 0;
+	DavixError* davixErr=NULL;
+	int ret;
+	if( (ret = d_ptr->davixPosix->unlink(d_ptr->davixParam, path, &davixErr) )  < 0){
+		Error("DavixUnlink", "failed to unlink the file: %s (%d)",
+            davixErr->getErrMsg().c_str(), davixErr->getStatus());
+		DavixError::clearError(&davixErr);		
+	}
+	return ret;
 }
 
